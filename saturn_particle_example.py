@@ -23,32 +23,38 @@ def ring_spawn():
     
 
 def run(t):
-    m0=5.683e26
+    m0=5.683e26 #Saturn Mass
+    
+    """
+    Here are some moon values for Mimas and Titan. I have moved the numbers directly into the object initalisation, but am leaving these variables here commented incase I mess up and leave them called somewhere
     m=0.379e20
     mt=1345e20
     
     a=185.52e6
     at=1221.87e6
+    """
+
+    
     sat=mmt.body("Saturn",60268000,m0,m0)
-    mim=mmt.body("Mimas",208000,m,m0)
-    tit=mmt.body("Titan",2575000,mt,m0)
+    mim=mmt.body("Mimas",208000,0.379e20,m0)
+    tit=mmt.body("Titan",2575000,1345e20,m0)
     prom=mmt.body("prometheus",68000,0.0016e20,m0)
     
-    mim.orbit(t,a,0.0202,(2*np.pi)/10,0)
-    tit.orbit(t,at,0.0292,(2*np.pi)/3,0)
+    mim.orbit(t,185.52e6,0.0202,(2*np.pi)/10,0)
+    tit.orbit(t,1221.87e6,0.0292,(2*np.pi)/3,0)
     prom.orbit(t,139.353e6,0.00204,(2*np.pi)/7,0)
     
     global moons
-    #moons=[prom,tit,mim]
-    moons=[]
+    moons=[prom,tit,mim] #Creates a list of moons for the simulation to consider
     
     ring_spawn()
-    global fs
+    global fs #force of gravity due to saturn
         
-    
+    #Intialise the orbital velocities of every particle, assuming it begins in a stable circular orbit
     particle_speeds[0,:,1],particle_speeds[0,:,0]=sat.orbit_speed(particle_states[0,:,0], particle_states[0,:,1], 0, 0)
     particle_speeds[0,:,1]=particle_speeds[0,:,1]*(-1)
-    
+
+    #Create lambda function to get acceleration everywhere due to given moon, for later use
     moon_accel=lambda moon,x,y,i: moon.f_accel(x,y,moon.pos[0][i],moon.pos[1][i])
     
   
@@ -67,7 +73,9 @@ def run(t):
     
 
 def cleanup(states):
-    #print("Cleanup starting...")
+    """
+    Clean out any particle that *ever* reports a np.nan value for its velocity and/or position as this indicates the particle collided with a moon, and was removed from the rings.
+    """
     nan_check=np.count_nonzero(~np.isnan(particle_states), axis=0)
     warning_list=[]
     for i in range(0,simconfig["particles"]):
@@ -75,7 +83,6 @@ def cleanup(states):
             warning_list.append(i)
     
     states=np.delete(states,warning_list,axis=1)
-    #print("Cleanup done!")
     
     return states
     
