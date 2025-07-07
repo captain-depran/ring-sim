@@ -93,3 +93,34 @@ def ellipse_draw(a,e,theta,rot):
     ex,ey=ellipse(a,e,theta)
     ex,ey=rotate(ex,ey,rot)
     return ex,ey
+
+def cleanup(states):
+    """
+    Clean out any particle that *ever* reports a np.nan value for its velocity and/or position as this indicates the particle collided with a moon, and was removed from the rings.
+    States is a matrix of particle positions and/or speeds/accelerations, and should any particle value *ever* be nan, it should be removed from the entire simulation.
+    """
+    nan_check=np.count_nonzero(~np.isnan(states), axis=0)
+    warning_list=[]
+    for i in range(0,len(states[0,:])):
+        if nan_check[i,0]!=len(states[:,0]):
+            warning_list.append(i)
+    
+    states=np.delete(states,warning_list,axis=1)
+    
+    return states
+
+def radial_space(x,y):
+    return np.sqrt((x**2)+(y**2))
+
+
+def compare_runs(file1,file2):
+    """
+    Compare the final block of two previously ran simulations, importing their .npy files of the particle states.
+    The returned list is a list of the difference in orbital radius for each particle in the sim.
+    """
+    moons=np.load(file1)
+    no_moons=np.load(file2)
+    moons=radial_space(moons[-1,:,0],moons[-1,:,1])
+    no_moons=radial_space(no_moons[-1,:,0],no_moons[-1,:,1])
+    compare=np.abs(moons-no_moons)
+    return compare

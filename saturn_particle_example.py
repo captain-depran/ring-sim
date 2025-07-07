@@ -12,12 +12,9 @@ from tqdm import tqdm
 
 def ring_spawn():
     rng = np.random.default_rng(simconfig["seed"])
-    radii= rng.integers(low=int(74e6), high=143e6, size=simconfig["particles"])
-    theta=np.linspace(0,2*np.pi,simconfig["particles"])
+    radii= rng.integers(low=simconfig["PRadIn"], high=simconfig["PRadOut"], size=simconfig["particles"])
+    theta=rng.integers(low=0,high=np.pi*2,size=simconfig["particles"])
     particle_states[0,:,0],particle_states[0,:,1]=mmt.ellipse_draw(radii, 0, theta, 0)
-    #scatter=np.random.normal(1,simconfig["scatter_mult"],len(theta))
-    #particle_states[0,:,0]=particle_states[0,:,0]*scatter
-    #particle_states[0,:,1]=particle_states[0,:,1]*scatter
 
 
     
@@ -45,7 +42,7 @@ def run(t):
     prom.orbit(t,139.353e6,0.00204,(2*np.pi)/7,0)
     
     global moons
-    moons=[prom,tit,mim] #Creates a list of moons for the simulation to consider
+    moons=[mim,tit,prom] #Creates a list of moons for the simulation to consider
     
     ring_spawn()
     global fs #force of gravity due to saturn
@@ -72,19 +69,7 @@ def run(t):
         particle_speeds[0,:,:]=particle_speeds[1,:,:]
     
 
-def cleanup(states):
-    """
-    Clean out any particle that *ever* reports a np.nan value for its velocity and/or position as this indicates the particle collided with a moon, and was removed from the rings.
-    """
-    nan_check=np.count_nonzero(~np.isnan(particle_states), axis=0)
-    warning_list=[]
-    for i in range(0,simconfig["particles"]):
-        if nan_check[i,0]!=steps:
-            warning_list.append(i)
-    
-    states=np.delete(states,warning_list,axis=1)
-    
-    return states
+
     
 
 
@@ -95,12 +80,12 @@ global steps
 
 simconfig = {
     "seed": 12345,
-    "particles" : 30000,
-    "PRad" : int(120e6),
-    "timespan": 2419000,
-    "dt" : 500,
-    "scatter_mult" : 0.1,
-    "blocks" : 96
+    "particles" : 5000,
+    "PRadIn" : int(74e6),      #particle spawning inner radius, meters
+    "PRadOut" : int(130e6),    #particle spawning outer radius, meters
+    "timespan": 2419000,       #Length of time to simulate, seconds
+    "dt" : 500,                #Size of time step, seconds
+    "blocks" : 196
     }
 
 
@@ -117,16 +102,20 @@ particle_speeds=np.empty((2,simconfig["particles"],2))
 Speed and position indexs 0,1 are x,y
 """
 
+#runs the sim for a month, then clears memory and restarts with particle intial state set by last months state
 for n in tqdm(range(0,simconfig["blocks"])):
     t=t+(simconfig["timespan"]*n)
     run(t)
     particle_states[0,:,:]=particle_states[-1,:,:]
 
 
+#remove all np.nan value inducing particles
+particle_states=mmt.cleanup(particle_states)
 
-particle_states=cleanup(particle_states)
-
+np.save("moons.npy",particle_states)
+fig=plt.hexbin(particle_states[:,:,0],particle_states[:,:,1],gridsize=1000)
 #plt.scatter(particle_states[-1,:,0],particle_states[-1,:,1],marker=".")
-plt.hexbin(particle_states[:,:,0],particle_states[:,:,1],gridsize=2000)
-#plt.axis("scaled")
+#plt.hexbin(particle_states[:,:,0],particle_states[:,:,1],gridsize=1000)
+plt.axis("scaled")
+plt.savefig("saturn_rings.png",dpi=1000)
 plt.show()
